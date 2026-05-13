@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+sqlalchemy
+pymysql
+pydantic
+pydantic-settings
+python-dotenv
+pandas
+scikit-learn
+joblib
+prometheus-fastapi-instrumentator
+prometheus-client
+cryptography
+python-multipart
