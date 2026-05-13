@@ -7,11 +7,9 @@ FROM python:3.9-slim-buster
 WORKDIR /app
 
 # Install system dependencies for MySQL client and others
-RUN apt-get update && apt-get install -y --no-install-recommends 
-    gcc 
-    default-libmysqlclient-dev 
-    pkg-config 
-    && rm -rf /var/lib/apt/lists/*
+RUN sed -i -e 's/deb.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    sed -i -e 's/security.debian.org/archive.debian.org/g' /etc/apt/sources.list && \
+    apt-get update && apt-get install -y --no-install-recommends gcc default-libmysqlclient-dev pkg-config && rm -rf /var/lib/apt/lists/*
 
 # Copy the requirements file into the working directory
 COPY requirements.txt .

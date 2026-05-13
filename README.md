@@ -31,16 +31,16 @@ This system provides a robust framework for managing customer data, predicting c
 
 ```mermaid
 graph TD
-    Browser[User Browser] --> |Accesses API| FastAPI(FastAPI App)
-    FastAPI --> |CRUD Operations| MySQL[MySQL Database]
-    FastAPI --> |ML Prediction/Retraining| MLService[ML Service (in FastAPI)]
-    MLService --> |Loads/Saves Model| ModelStorage[model.pkl]
-    FastAPI --> |Exposes Metrics| Prometheus[Prometheus]
-    Prometheus --> |Scrapes Metrics| FastAPI
-    Prometheus --> |Scrapes Metrics| cAdvisor[cAdvisor (Container Metrics)]
-    Grafana[Grafana] --> |Queries Metrics| Prometheus
-    Browser --> |Accesses Dashboards| Grafana
-    MLService --> |Logs Events| Filebeat[Log File (app.log)]
+    Browser["User Browser"] --> |"Accesses API"| FastAPI["FastAPI App"]
+    FastAPI --> |"CRUD Operations"| MySQL["MySQL Database"]
+    FastAPI --> |"ML Prediction/Retraining"| MLService["ML Service (in FastAPI)"]
+    MLService --> |"Loads/Saves Model"| ModelStorage["model.pkl"]
+    FastAPI --> |"Exposes Metrics"| Prometheus["Prometheus"]
+    Prometheus --> |"Scrapes Metrics"| FastAPI
+    Prometheus --> |"Scrapes Metrics"| cAdvisor["cAdvisor (Container Metrics)"]
+    Grafana["Grafana"] --> |"Queries Metrics"| Prometheus
+    Browser --> |"Accesses Dashboards"| Grafana
+    MLService --> |"Logs Events"| Filebeat["Log File (app.log)"]
 ```
 
 ## Tech Stack
