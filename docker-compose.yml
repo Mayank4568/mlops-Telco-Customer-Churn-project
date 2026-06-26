@@ -1,82 +1,65 @@
 version: '3.8'
 
 services:
-  mysql:
+  db:
     image: mysql:8.0
-    container_name: mysql_db
+    container_name: churn_mysql_db
+    restart: always
     environment:
+      MYSQL_DATABASE: telco_churn
+      MYSQL_USER: churn_user
+      MYSQL_PASSWORD: churn_password
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${MYSQL_USER}", "-p${MYSQL_PASSWORD}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "churn_user", "-pchurn_password"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
 
-  fastapi:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: fastapi_app
-    env_file:
-      - .env
+  app:
+    build: .
+    container_name: churn_fastapi_app
+    restart: always
     ports:
       - "8000:8000"
+    environment:
+      - DATABASE_URL=mysql+pymysql://churn_user:churn_password@db:3306/telco_churn
     depends_on:
-      mysql:
+      db:
         condition: service_healthy
     volumes:
-      - ./app:/app/app  # Mount app folder for live reload during development (optional)
-      - ./dataset:/app/dataset # For initial model training
-      - ./logs:/app/logs
+      - ./app/ml/saved_models:/workspace/app/ml/saved_models
+      - .:/workspace
 
   prometheus:
     image: prom/prometheus:latest
-    container_name: prometheus_server
+    container_name: churn_prometheus
+    restart: always
     ports:
       - "9090:9090"
     volumes:
-      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus_data:/prometheus
-    command: 
-      --config.file=/etc/prometheus/prometheus.yml 
-      --web.enable-lifecycle 
-      --storage.tsdb.path=/prometheus
-    depends_on:
-      - fastapi
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   grafana:
-    image: grafana/grafana:latest
-    container_name: grafana_dashboard
+    image: grafana/grafana-oss:latest
+    container_name: churn_grafana
+    restart: always
     ports:
       - "3000:3000"
-    volumes:
-      - grafana_data:/var/lib/grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+    volumes:
+      - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
     depends_on:
       - prometheus
 
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor_metrics
-    ports:
-      - "8080:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:rw
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-    command: -docker_only
-
 volumes:
   mysql_data:
-  prometheus_data:
-  grafana_data:

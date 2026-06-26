@@ -1,242 +1,174 @@
-# Customer Churn Prediction MLOps System
+# Telco Customer Churn - CRUD & ML Lifecycle Monitoring System
 
-This project implements a complete production-style MLOps system for predicting customer churn using FastAPI, MySQL, Prometheus, and Grafana.
+This project is a complete, production-grade MLOps system developed for the Telco Customer Churn prediction task. It implements a fully-featured FastAPI REST API offering CRUD operations on customer records, real-time machine learning predictions, automatic database logging, model retraining, and prometheus-grafana monitoring.
 
-## Table of Contents
-- [Project Overview](#project-overview)
-- [Architecture](#architecture)
-- [Tech Stack](#tech-stack)
-- [Folder Structure](#folder-structure)
-- [Setup Instructions](#setup-instructions)
-  - [Prerequisites](#prerequisites)
-  - [Local Setup (without Docker)](#local-setup-without-docker)
-  - [Dockerized Setup (Recommended)](#dockerized-setup-recommended)
-- [API Endpoints](#api-endpoints)
-- [Machine Learning Lifecycle](#machine-learning-lifecycle)
-- [Monitoring with Prometheus & Grafana](#monitoring-with-prometheus--grafana)
-- [Screenshots](#screenshots)
-- [Contribution](#contribution)
-- [License](#license)
+---
 
-## Project Overview
-This system provides a robust framework for managing customer data, predicting churn, and monitoring the performance of the ML model and API. It includes:
-- **CRUD APIs** for customer data management.
-- A **Machine Learning Pipeline** for churn prediction (RandomForestClassifier).
-- **Model Retraining** capabilities.
-- **Prometheus** for collecting application and system metrics.
-- **Grafana** for visualizing metrics and dashboards.
-- **Docker** and **Docker Compose** for easy deployment and orchestration.
+## Architecture & Tech Stack
 
-## Architecture
+1. **FastAPI Application (`app/`)**: Handles CRUD operations and exposes model serving and retraining endpoints.
+2. **Database Support (SQLite/MySQL)**: Uses SQLAlchemy. Defaults to SQLite (`telco_churn.db`) for lightweight local runs, but connects to MySQL automatically via Docker Compose.
+3. **ML Lifecycle (scikit-learn & joblib)**:
+   - Categorical and numerical column preprocessing using a robust `ColumnTransformer`.
+   - Classification using a `RandomForestClassifier` pipeline.
+   - Dynamic model loader that reloads the model into memory only when a new version is trained.
+   - Automated model performance tracking (Accuracy, F1-score, Recall, Precision, Dataset Size, Version) registered to database metadata.
+4. **Monitoring (Prometheus & Grafana)**:
+   - Custom metrics tracking CRUD operations, model predictions, prediction probability, and training dataset.
+   - Provisioned dashboard in Grafana configured to load out of the box.
 
-```mermaid
-graph TD
-    Browser["User Browser"] --> |"Accesses API"| FastAPI["FastAPI App"]
-    FastAPI --> |"CRUD Operations"| MySQL["MySQL Database"]
-    FastAPI --> |"ML Prediction/Retraining"| MLService["ML Service (in FastAPI)"]
-    MLService --> |"Loads/Saves Model"| ModelStorage["model.pkl"]
-    FastAPI --> |"Exposes Metrics"| Prometheus["Prometheus"]
-    Prometheus --> |"Scrapes Metrics"| FastAPI
-    Prometheus --> |"Scrapes Metrics"| cAdvisor["cAdvisor (Container Metrics)"]
-    Grafana["Grafana"] --> |"Queries Metrics"| Prometheus
-    Browser --> |"Accesses Dashboards"| Grafana
-    MLService --> |"Logs Events"| Filebeat["Log File (app.log)"]
-```
+---
 
-## Tech Stack
-- **FastAPI**: Web framework for building APIs.
-- **Python**: Programming language.
-- **Scikit-learn**: Machine learning library.
-- **SQLAlchemy**: ORM for database interaction.
-- **MySQL**: Relational database.
-- **Prometheus**: Monitoring system.
-- **Grafana**: Data visualization and dashboarding tool.
-- **Docker**: Containerization platform.
-- **Docker Compose**: Tool for defining and running multi-container Docker applications.
-- **Pydantic**: Data validation and settings management.
-- **Uvicorn**: ASGI server for FastAPI.
-- **Pandas**: Data manipulation and analysis.
-- **Joblib**: For saving and loading Python objects, especially scikit-learn models.
-
-## Folder Structure
+## Project Structure
 
 ```
-mlops-fastapi-project/
-│
+mlops-Telco-Customer-Churn-project/
 ├── app/
-│   ├── main.py
-│   ├── database.py
-│   ├── models.py
-│   ├── schemas.py
-│   ├── crud.py
-│   ├── config.py
-│   ├── logger.py
-│   │
 │   ├── ml/
-│   │   ├── train.py
-│   │   ├── predict.py
-│   │   ├── retrain.py
-│   │   ├── preprocess.py
-│   │   └── model.pkl (generated after training)
-│   │
-│   ├── routes/
-│   │   ├── customer_routes.py
-│   │   ├── prediction_routes.py
-│   │   └── retrain_routes.py
-│   │
-│   └── metrics/
-│       └── prometheus_metrics.py
-│
-├── dataset/
-│   └── telco_churn.csv (place your dataset here)
-│
-├── prometheus/
-│   └── prometheus.yml
-│
-├── grafana/
-│   └── (Grafana dashboards configurations - will be set up manually via UI)
-│
-├── logs/
-│   └── app.log (generated by the application)
-│
-├── screenshots/
-│
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── README.md
-├── .env
-└── .gitignore
+│   │   ├── __init__.py
+│   │   ├── train.py          # Model training pipeline & evaluation
+│   │   ├── predict.py        # Model inference & prediction logging
+│   │   └── saved_models/     # Directory where trained models are saved (.pkl)
+│   ├── __init__.py
+│   ├── database.py           # SQLAlchemy setup (handles SQLite/MySQL dynamically)
+│   ├── models.py             # SQLAlchemy schemas (CustomerRecord, PredictionRecord, ModelMetadata)
+│   ├── schemas.py            # Pydantic validation schemas
+│   ├── crud.py               # Database transaction layer
+│   ├── metrics.py            # Prometheus custom metrics definition
+│   ├── seed.py               # Synthetic churn data generator & DB initializer
+│   └── main.py               # FastAPI router, Prometheus middleware, & startup tasks
+├── config/
+│   ├── prometheus.yml        # Prometheus configuration & targets
+│   └── grafana/              # Grafana dashboard & datasource provisioning
+│       └── provisioning/
+│           ├── dashboards/
+│           │   ├── dashboard.yml
+│           │   └── telco_churn_dashboard.json
+│           └── datasources/
+│               └── datasource.yml
+├── Dockerfile                # FastAPI container builder
+├── docker-compose.yml        # Multi-container conductor (DB, App, Prometheus, Grafana)
+├── requirements.txt          # Python package requirements
+└── README.md                 # This guide
 ```
 
-## Setup Instructions
+---
 
-### Prerequisites
-- Python 3.9+
-- Docker Desktop (includes Docker Engine and Docker Compose)
-- Git
+## Quick Start (Two Ways to Run)
 
-### Local Setup (without Docker)
+### Method 1: Using Docker Compose (Recommended - Starts everything)
 
-#### 1. Clone the repository
+This launches the FastAPI application, a MySQL Database, Prometheus, and Grafana simultaneously. The database is automatically seeded, and model version 1 is trained on startup!
+
+1. Make sure you have Docker installed and running.
+2. Run the following command in the `m1` directory:
+   ```bash
+   docker-compose up --build
+   ```
+3. Access the services:
+   - **Main Web UI Dashboard (Frontend)**: [http://localhost:8000](http://localhost:8000)
+   - **Interactive API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs) *(now styled with a modern Material theme)*
+   - **Prometheus UI**: [http://localhost:9090](http://localhost:9090)
+   - **Grafana Dashboard**: [http://localhost:3000](http://localhost:3000) (Anonymous Admin is enabled; no login required!)
+
+---
+
+### Method 2: Running Locally (Fast development)
+
+This method uses SQLite, avoiding Docker overhead.
+
+1. **Install requirements**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. **Start the FastAPI App**:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
+   *Note: On startup, the app creates `telco_churn.db`, generates synthetic customer records, and trains the first model version (`model_v1.pkl` in `app/ml/saved_models/`).*
+3. Access the services:
+   - **Main Web UI Dashboard (Frontend)**: [http://localhost:8000](http://localhost:8000) or [http://127.0.0.1:8000](http://127.0.0.1:8000)
+   - **Interactive API Documentation (Swagger)**: [http://localhost:8000/docs](http://localhost:8000/docs) or [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+
+
+---
+
+## API Endpoints Reference
+
+### CRUD Operations
+- **`POST /api/v1/customers`**: Add a new customer record.
+- **`GET /api/v1/customers/{customer_id}`**: Fetch details of a specific customer.
+- **`GET /api/v1/customers`**: Retrieve a paginated list of customer records.
+- **`PUT /api/v1/customers/{customer_id}`**: Update features or label (churn status) of an existing customer.
+- **`DELETE /api/v1/customers/{customer_id}`**: Remove a customer record.
+
+### Machine Learning & MLOps
+- **`POST /api/v1/predict`**: Predict Churn for a customer.
+  - *Request Body*: `{ "customer_id": "CUSTOMER-ID" }`
+  - *Details*: Fetches customer data from the database, runs model inference, returns predicted class (0/1) and churn probability, and logs prediction details in the database.
+- **`POST /api/v1/retrain`**: Triggers model retraining.
+  - *Details*: Queries the database for all records with a non-null `churn` value, performs a train/test split, trains a new random forest model, evaluates metrics (Accuracy, F1, Precision, Recall), saves the model pipeline, sets the new version as active, and updates Prometheus gauges.
+- **`GET /api/v1/models/active`**: Get metadata for the currently active model.
+- **`GET /api/v1/models/history`**: Get performance metrics of all historical models.
+
+### Metrics & Diagnostics
+- **`GET /health`**: Returns application database and model health status.
+- **`GET /metrics`**: Exposes standard HTTP and custom MLOps/CRUD metrics for Prometheus.
+
+---
+
+## Verifying the ML Lifecycle & Monitoring
+
+To test the system fully, run these sample HTTP requests (using the Swagger UI or `curl`):
+
+### 1. Create a Customer Record
 ```bash
-git clone <your-repo-url>
-cd mlops-fastapi-project
+curl -X 'POST' \
+  'http://localhost:8000/api/v1/customers' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "customer_id": "9999-NEWCUST",
+  "gender": "Male",
+  "senior_citizen": 0,
+  "partner": "Yes",
+  "dependents": "Yes",
+  "tenure": 24,
+  "phone_service": "Yes",
+  "internet_service": "Fiber optic",
+  "online_security": "Yes",
+  "tech_support": "Yes",
+  "paperless_billing": "Yes",
+  "payment_method": "Credit card (automatic)",
+  "monthly_charges": 85.50,
+  "total_charges": 2052.00,
+  "churn": null
+}'
 ```
 
-#### 2. Create and activate a virtual environment
+### 2. Predict Churn
 ```bash
-python -m venv .venv
-# On Windows
-.venv\Scripts\activate
-# On macOS/Linux
-source .venv/bin/activate
+curl -X 'POST' \
+  'http://localhost:8000/api/v1/predict' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "customer_id": "9999-NEWCUST"
+}'
 ```
+*Note: This logs a prediction record in the database and increments the `model_predictions_total` metric.*
 
-#### 3. Install dependencies
-```bash
-pip install -r requirements.txt
-```
-
-#### 4. MySQL Setup
-Install and run a MySQL server locally. Create a database named `churn_db` and a user with appropriate permissions matching your `.env` file (e.g., `user:password`).
-
-Update `MYSQL_HOST` in your `.env` to `localhost`.
-
-#### 5. Prepare the dataset
-Download the `Telco Customer Churn` dataset (`WA_Fn-UseC_-Telco-Customer-Churn.csv`) from [Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) and place it in the `dataset/` directory. Rename it to `telco_churn.csv`.
-
-#### 6. Run FastAPI application
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-The API will be available at `http://localhost:8000`.
-Access Swagger UI at `http://localhost:8000/docs`.
-
-### Dockerized Setup (Recommended)
-
-#### 1. Clone the repository
-```bash
-git clone <your-repo-url>
-cd mlops-fastapi-project
-```
-
-#### 2. Prepare the dataset
-Download the `Telco Customer Churn` dataset (`WA_Fn-UseC_-Telco-Customer-Churn.csv`) from [Kaggle](https://www.kaggle.com/datasets/blastchar/telco-customer-churn) and place it in the `dataset/` directory. Rename it to `telco_churn.csv`.
-
-#### 3. Start the Docker services
-```bash
-docker-compose up --build -d
-```
-This command will:
-- Build the FastAPI Docker image.
-- Start MySQL, FastAPI, Prometheus, Grafana, and cAdvisor containers.
-- The FastAPI app will wait for MySQL to be healthy before starting.
-
-#### 4. Verify Services
-- **FastAPI**: `http://localhost:8000` (Swagger UI at `/docs`, Prometheus metrics at `/metrics`)
-- **Prometheus**: `http://localhost:9090`
-- **Grafana**: `http://localhost:3000` (Login: admin/admin)
-- **cAdvisor**: `http://localhost:8080`
-
-## API Endpoints
-
-### Health Check
-- `GET /health`: Checks the health of the API.
-
-### Customer Operations (CRUD)
-- `POST /customers/`: Create a new customer.
-- `GET /customers/`: Retrieve all customers.
-- `GET /customers/{customer_id}`: Retrieve a specific customer by internal ID.
-- `PUT /customers/{customer_id}`: Update an existing customer.
-- `DELETE /customers/{customer_id}`: Delete a customer.
-
-### ML Prediction
-- `POST /predict/`: Get a churn prediction for a given customer's features.
-
-### ML Retraining
-- `POST /retrain/`: Trigger a model retraining process using the latest data from the database. (Runs in background)
-
-## Machine Learning Lifecycle
-
-1.  **Data Preprocessing (`app/ml/preprocess.py`)**: Handles missing values (TotalCharges) and encodes categorical features using Label Encoding.
-2.  **Model Training (`app/ml/train.py`)**: Trains a `RandomForestClassifier` on the preprocessed data. The initial model is trained on application startup if `model.pkl` is not found.
-3.  **Prediction (`app/ml/predict.py`)**: Loads the trained model and makes churn predictions.
-4.  **Retraining (`app/ml/retrain.py`)**: Fetches new and existing data from the MySQL database, combines it (if original dataset exists), preprocesses, retrains the model, and saves the updated model. This can be triggered via a dedicated API endpoint.
-
-## Monitoring with Prometheus & Grafana
-
-### Prometheus Metrics
-The FastAPI application exposes a `/metrics` endpoint with various metrics:
--   `http_requests_total`: Total API requests.
--   `http_request_duration_seconds_bucket`: API request latency.
--   `retrain_total`: Total number of model retraining events.
--   `prediction_total`: Total number of churn prediction requests.
--   `failed_prediction_total`: Total number of failed churn prediction requests.
--   `customer_crud_operations_total`: Count of CRUD operations (create, read_all, read_one, update, delete) on customers.
-
-Prometheus scrapes these metrics, along with host-level metrics from `cAdvisor`.
-
-### Grafana Dashboards
-1.  **Access Grafana**: Navigate to `http://localhost:3000` and log in (admin/admin).
-2.  **Add Prometheus Data Source**: 
-    -   Configuration -> Data Sources -> Add data source -> Prometheus.
-    -   URL: `http://prometheus:9090` (since Grafana is in the same Docker network as Prometheus).
-    -   Save & Test.
-3.  **Import Dashboards**: You can create custom dashboards or import existing ones (e.g., Node Exporter Full dashboard for host metrics, or create new ones for FastAPI and ML metrics).
-    -   **Example Metrics to Visualize:**
-        -   `sum(http_requests_total)`: Total API requests.
-        -   `rate(http_request_duration_seconds_sum[5m]) / rate(http_request_duration_seconds_count[5m])`: Average API latency.
-        -   `retrain_total`: Retraining events.
-        -   `prediction_total`: Prediction requests.
-        -   `customer_crud_operations_total{operation_type="create"}`: Customer create operations.
-        -   `container_cpu_usage_seconds_total`: Container CPU usage (from cAdvisor).
-
-## Screenshots
-(Will be added here after running the application)
-
-## Contribution
-Feel free to fork the repository and contribute.
-
-## License
-This project is licensed under the MIT License.
+### 3. Add Feedback & Retrain
+1. Update the customer's churn status to register new feedback:
+   ```bash
+   curl -X 'PUT' \
+     'http://localhost:8000/api/v1/customers/9999-NEWCUST' \
+     -H 'Content-Type: application/json' \
+     -d '{
+     "churn": 1
+   }'
+   ```
+2. Call the retrain endpoint to update the model with this new data:
+   ```bash
+   curl -X 'POST' \
+     'http://localhost:8000/api/v1/retrain'
+   ```
+   This will train a new model version (V2), evaluate it, and dynamically load V2 for all subsequent prediction requests!

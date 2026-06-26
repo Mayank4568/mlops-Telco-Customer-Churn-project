@@ -1,12 +1,33 @@
+# Python bytecode
 __pycache__/
-*.py[cod]
-*$py.class
-.env
-.venv
-env/
+*.pyc
+*.pyo
+*.pyd
+
+# Local databases
+*.db
+*.sqlite
+
+# Virtual environments
 venv/
-ENV/
+.venv/
+env/
+.env
+
+# IDE configurations
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+
+# Docker & logs
 logs/*.log
-*.pkl
-dataset/*.csv
-.dockerignore
+mysql_data/
+prometheus_data/
+grafana_data/
+
+# Machine Learning models
+app/ml/saved_models/

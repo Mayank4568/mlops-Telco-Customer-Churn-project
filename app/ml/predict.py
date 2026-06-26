@@ -1,28 +1,75 @@
+import os
 import joblib
 import pandas as pd
-import os
-from app.config import settings
-from app.ml.preprocess import preprocess_data
-from app.logger import logger
+from sqlalchemy.orm import Session
+from .. import crud
 
-def predict_churn(input_data: dict):
-    try:
-        if not os.path.exists(settings.MODEL_PATH):
-            logger.error("Model file not found")
-            return None
+_LOADED_MODEL = None
+_LOADED_VERSION = None
+
+def get_loaded_model(db: Session):
+    """Retrieve the cached active model, loading it if version has changed."""
+    global _LOADED_MODEL, _LOADED_VERSION
+    
+    active_model_meta = crud.get_active_model(db)
+    if not active_model_meta:
+        raise ValueError("No active machine learning model found in the database. Please run retraining first.")
         
-        model = joblib.load(settings.MODEL_PATH)
-        df = pd.DataFrame([input_data])
-        processed_df = preprocess_data(df)
+    version = active_model_meta.version
+    path = active_model_meta.model_path
+    
+    if _LOADED_VERSION != version or _LOADED_MODEL is None:
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"Model file for version {version} not found at {path}")
+        _LOADED_MODEL = joblib.load(path)
+        _LOADED_VERSION = version
+        print(f"Successfully loaded model version {version} from {path}")
         
-        # Ensure 'Churn' column is not present if it was accidentally added
-        if 'Churn' in processed_df.columns:
-            processed_df = processed_df.drop('Churn', axis=1)
-            
-        prediction = model.predict(processed_df)[0]
-        probability = model.predict_proba(processed_df)[0][1]
+    return _LOADED_MODEL, _LOADED_VERSION
+
+def predict_churn_for_customer(db: Session, customer_id: str) -> dict:
+    """Predicts churn for a customer by fetching their record and feeding it to the model."""
+    customer = crud.get_customer_by_customer_id(db, customer_id)
+    if not customer:
+        raise ValueError(f"Customer with ID {customer_id} not found.")
         
-        return "Yes" if prediction == 1 else "No", float(probability)
-    except Exception as e:
-        logger.error(f"Error during prediction: {str(e)}")
-        return None
+    # Get model
+    model, version = get_loaded_model(db)
+    
+    # Construct input dataframe
+    input_data = pd.DataFrame([{
+        'gender': customer.gender,
+        'senior_citizen': customer.senior_citizen,
+        'partner': customer.partner,
+        'dependents': customer.dependents,
+        'tenure': customer.tenure,
+        'phone_service': customer.phone_service,
+        'internet_service': customer.internet_service,
+        'online_security': customer.online_security,
+        'tech_support': customer.tech_support,
+        'paperless_billing': customer.paperless_billing,
+        'payment_method': customer.payment_method,
+        'monthly_charges': customer.monthly_charges,
+        'total_charges': customer.total_charges
+    }])
+    
+    # Inference
+    probabilities = model.predict_proba(input_data)[0]
+    prediction = int(model.predict(input_data)[0])
+    churn_probability = float(probabilities[1])  # Prob of churn = 1
+    
+    # Log prediction in DB for tracking/drift detection
+    crud.log_prediction(
+        db=db,
+        customer_id=customer_id,
+        predicted_churn=prediction,
+        probability=churn_probability,
+        model_version=version
+    )
+    
+    return {
+        "customer_id": customer_id,
+        "predicted_churn": prediction,
+        "probability": churn_probability,
+        "model_version": version
+    }

@@ -1,9 +1,18 @@
+import os
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from app.config import settings
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-engine = create_engine(settings.DATABASE_URL)
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./telco_churn.db")
+
+# For SQLite, we need connect_args={"check_same_thread": False}
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL, connect_args={"check_same_thread": False}
+    )
+else:
+    # Handles MySQL, PostgreSQL, etc.
+    engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()

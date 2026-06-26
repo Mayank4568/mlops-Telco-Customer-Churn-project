@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telco Churn MLOps Console</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SweetAlert2 for premium notifications -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <style>
+        :root {
+            --bg-primary: #090d16;
+            --bg-secondary: #111827;
+            --bg-card: rgba(17, 24, 39, 0.7);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            
+            --gradient-blue: linear-gradient(135deg, #3b82f6 0%, #06b6d4 100%);
+            --gradient-green: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            --gradient-red: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);
+            --gradient-purple: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            
+            --shadow-glow-blue: 0 0 20px rgba(6, 182, 212, 0.15);
+            --shadow-glow-green: 0 0 20px rgba(16, 185, 129, 0.15);
+            
+            --font-main: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-main);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            display: flex;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background-color: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            background: var(--gradient-blue);
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: var(--shadow-glow-blue);
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            flex-grow: 1;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 16px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            color: white;
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 3px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .observability-links {
+            display: flex;
+            gap: 12px;
+        }
+
+        .obs-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 600;
+            color: white;
+            transition: opacity 0.2s;
+        }
+
+        .obs-btn.prometheus {
+            background-color: #e6522c;
+        }
+
+        .obs-btn.grafana {
+            background-color: #f47a20;
+        }
+
+        .obs-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* Main Content Panel */
+        .main-container {
+            margin-left: 260px;
+            padding: 40px;
+            width: calc(100% - 260px);
+            min-height: 100vh;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 36px;
+        }
+
+        .header-title h1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .header-title p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .system-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            padding: 8px 16px;
+            border-radius: 30px;
+            color: var(--accent-green);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--accent-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); opacity: 0.8; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(0.9); opacity: 0.8; }
+        }
+
+        /* Views (Tabs) */
+        .view-panel {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .view-panel.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Overview Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 24px;
+            margin-bottom: 36px;
+        }
+
+        .metric-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--gradient-blue);
+        }
+
+        .metric-card.accuracy::before { background: var(--gradient-green); }
+        .metric-card.f1::before { background: var(--gradient-purple); }
+        .metric-card.dataset::before { background: var(--gradient-red); }
+
+        .metric-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .metric-icon {
+            opacity: 0.7;
+        }
+
+        .metric-value {
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -1px;
+            margin-bottom: 6px;
+        }
+
+        .metric-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* Retrain Block */
+        .retrain-banner {
+            background: radial-gradient(circle at top right, rgba(6, 182, 212, 0.1), transparent), var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 36px;
+        }
+
+        .retrain-info h2 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .retrain-info p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            max-width: 600px;
+        }
+
+        .btn-gradient {
+            background: var(--gradient-blue);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            font-size: 15px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s;
+            box-shadow: var(--shadow-glow-blue);
+        }
+
+        .btn-gradient:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* Tables & List Views */
+        .card-container {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 36px;
+        }
+
+        .container-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .container-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        /* Database Table */
+        .table-responsive {
+            overflow-x: auto;
+            width: 100%;
+        }
+
+        .custom-table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 14px;
+        }
+
+        .custom-table th {
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .custom-table td {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .custom-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .badge.churn {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .badge.stay {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        .badge.pending {
+            background: rgba(245, 158, 11, 0.1);
+            color: #f59e0b;
+            border: 1px solid rgba(245, 158, 11, 0.2);
+        }
+
+        .action-icon-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 6px;
+            margin-right: 6px;
+            transition: all 0.2s;
+        }
+
+        .action-icon-btn:hover {
+            color: white;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .action-icon-btn.delete:hover {
+            color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        /* Forms & Inputs */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        label {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"], input[type="number"], select {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: white;
+            font-family: var(--font-main);
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.15);
+        }
+
+        /* Predict Interface */
+        .predict-split {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 30px;
+        }
+
+        .predict-result-card {
+            background: radial-gradient(circle at top right, rgba(59, 130, 246, 0.05), transparent), rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            min-height: 300px;
+            backdrop-filter: blur(10px);
+        }
+
+        .radial-progress {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-blue) 0deg, rgba(255, 255, 255, 0.05) 0deg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            margin-bottom: 24px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            transition: background 0.8s ease;
+        }
+
+        .radial-progress::after {
+            content: '';
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background-color: var(--bg-secondary);
+            border-radius: 50%;
+        }
+
+        .radial-value {
+            position: absolute;
+            z-index: 10;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .prediction-badge {
+            font-size: 18px;
+            font-weight: 600;
+            padding: 8px 20px;
+            border-radius: 30px;
+            margin-top: 10px;
+            display: none;
+            animation: scaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        @keyframes scaleIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .prediction-badge.no-churn {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent-green);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            display: inline-block;
+        }
+
+        .prediction-badge.churn {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--accent-red);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            display: inline-block;
+        }
+
+        .predict-placeholder {
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .predict-placeholder lucide-icon {
+            opacity: 0.3;
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .modal-close:hover {
+            color: white;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .pagination-btn {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .pagination-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo-container">
+            <div class="logo-icon">
+                <i data-lucide="activity"></i>
+            </div>
+            <div class="logo-text">Churn Console</div>
+        </div>
+
+        <ul class="nav-links">
+            <li>
+                <a class="nav-item active" onclick="switchView('dashboard')">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li>
+                <a class="nav-item" onclick="switchView('database')">
+                    <i data-lucide="database"></i>
+                    <span>Customer DB</span>
+                </a>
+            </li>
+            <li>
+                <a class="nav-item" onclick="switchView('predict')">
+                    <i data-lucide="zap"></i>
+                    <span>Predict Churn</span>
+                </a>
+            </li>
+        </ul>
+
+        <div class="sidebar-footer">
+            <div style="font-size: 11px; color: var(--text-secondary); margin-bottom: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">Observability Tools</div>
+            <div class="observability-links">
+                <a href="/metrics" target="_blank" class="obs-btn prometheus">
+                    <i data-lucide="activity" style="width: 14px;"></i>
+                    <span>Metrics</span>
+                </a>
+                <a href="http://localhost:3000" target="_blank" class="obs-btn grafana">
+                    <i data-lucide="bar-chart-3" style="width: 14px;"></i>
+                    <span>Grafana</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-container">
+        <header>
+            <div class="header-title">
+                <h1 id="view-title">MLOps Overview</h1>
+                <p id="view-desc">Monitor model performance metrics, logs, and retraining tasks.</p>
+            </div>
+            <div class="system-status">
+                <span class="status-dot"></span>
+                <span>System Connected</span>
+            </div>
+        </header>
+
+        <!-- VIEW 1: DASHBOARD -->
+        <div id="view-dashboard" class="view-panel active">
+            <!-- Metrics Cards Grid -->
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <span>Active Model</span>
+                        <i data-lucide="git-branch" class="metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="dash-version">v0</div>
+                    <div class="metric-desc">Dynamic reload active</div>
+                </div>
+                <div class="metric-card accuracy">
+                    <div class="metric-header">
+                        <span>Accuracy</span>
+                        <i data-lucide="target" class="metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="dash-accuracy">0.0%</div>
+                    <div class="metric-desc">Out-of-sample holdout</div>
+                </div>
+                <div class="metric-card f1">
+                    <div class="metric-header">
+                        <span>F1 Score</span>
+                        <i data-lucide="award" class="metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="dash-f1">0.000</div>
+                    <div class="metric-desc">Weighted balance metric</div>
+                </div>
+                <div class="metric-card dataset">
+                    <div class="metric-header">
+                        <span>Seeded Records</span>
+                        <i data-lucide="users" class="metric-icon"></i>
+                    </div>
+                    <div class="metric-value" id="dash-dataset">0</div>
+                    <div class="metric-desc">Ground-truth data points</div>
+                </div>
+            </div>
+
+            <!-- Retrain Action Banner -->
+            <div class="retrain-banner">
+                <div class="retrain-info">
+                    <h2>Retrain Classifier Model</h2>
+                    <p>Load the updated customer feedback data containing actual churn outcomes, run a stratified split, fit the preprocessing forest pipeline, and deploy the new version instantly.</p>
+                </div>
+                <button class="btn-gradient" id="btn-retrain" onclick="triggerRetrain()">
+                    <i data-lucide="refresh-cw"></i>
+                    <span>Retrain Model</span>
+                </button>
+            </div>
+
+            <!-- Dataset Management Card -->
+            <div class="card-container" style="margin-bottom: 30px;">
+                <div class="container-header">
+                    <div class="container-title">Dataset Management & MLOps Control</div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; padding: 20px 0;">
+                    <!-- Upload CSV Panel -->
+                    <div style="background: rgba(255, 255, 255, 0.01); border: 1px dashed var(--border-color); border-radius: 12px; padding: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+                        <i data-lucide="upload-cloud" style="width: 48px; height: 48px; color: var(--accent-cyan);"></i>
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Upload Custom CSV Dataset</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px auto;">Upload any standard Telco Churn CSV file. Existing customers will be updated, new ones will be added, and model retraining is triggered automatically.</p>
+                        </div>
+                        <input type="file" id="csv-file-input" accept=".csv" style="display: none;" onchange="handleCSVUpload(event)">
+                        <button class="btn-gradient" onclick="document.getElementById('csv-file-input').click()">
+                            <i data-lucide="file-text"></i>
+                            <span>Import CSV Dataset</span>
+                        </button>
+                    </div>
+
+                    <!-- Reset Database Panel -->
+                    <div style="background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-color); border-radius: 12px; padding: 24px; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;">
+                        <i data-lucide="database" style="width: 48px; height: 48px; color: var(--accent-red);"></i>
+                        <div>
+                            <h3 style="font-size: 16px; font-weight: 600; margin-bottom: 6px;">Reset Project Database</h3>
+                            <p style="font-size: 13px; color: var(--text-secondary); max-width: 320px; margin: 0 auto 16px auto;">Wipe all custom customer records and prediction history, reset the database back to clean synthetic seed records, and train Model v1.</p>
+                        </div>
+                        <button class="btn-secondary" style="border-color: rgba(239, 68, 68, 0.3); color: var(--accent-red);" onclick="handleDatabaseReset()">
+                            <i data-lucide="rotate-ccw"></i>
+                            <span>Wipe & Reset Seed Data</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model History Table -->
+            <div class="card-container">
+                <div class="container-header">
+                    <div class="container-title">Model Release History</div>
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Version</th>
+                                <th>Accuracy</th>
+                                <th>F1 Score</th>
+                                <th>Precision / Recall</th>
+                                <th>Training Dataset Size</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align: center; color: var(--text-secondary);">Querying metadata database...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: CUSTOMER DB (CRUD) -->
+        <div id="view-database" class="view-panel">
+            <div class="card-container">
+                <div class="container-header">
+                    <div class="container-title">Customer Records Management</div>
+                    <button class="btn-gradient" style="padding: 10px 20px; font-size: 13px;" onclick="openAddModal()">
+                        <i data-lucide="plus"></i>
+                        <span>Add Customer</span>
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Customer ID</th>
+                                <th>Tenure (Mos)</th>
+                                <th>Charges (Mo / Total)</th>
+                                <th>Internet</th>
+                                <th>Tech Support</th>
+                                <th>Ground Truth</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="db-table-body">
+                            <!-- Populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="pagination">
+                    <button class="pagination-btn" id="btn-prev" onclick="changePage(-1)" disabled>Previous</button>
+                    <button class="pagination-btn" id="btn-next" onclick="changePage(1)">Next</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: PREDICT CHURN -->
+        <div id="view-predict" class="view-panel">
+            <div class="predict-split">
+                <!-- Predict Form -->
+                <div class="card-container">
+                    <div class="container-header">
+                        <div class="container-title">Inference Engine Input</div>
+                    </div>
+                    
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>Option A: Select Existing Customer ID from DB</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="text" id="predict-cust-id" placeholder="e.g. 7590-VHVEG" style="flex-grow: 1;">
+                            <button class="btn-secondary" onclick="autofillPredictForm()">Load & Predict</button>
+                        </div>
+                    </div>
+
+                    <div style="height: 1px; background-color: var(--border-color); margin: 24px 0;"></div>
+                    <div style="font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 16px;">Option B: Enter Custom Customer Features</div>
+
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Gender</label>
+                            <select id="pred-gender">
+                                <option value="Female">Female</option>
+                                <option value="Male">Male</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Senior Citizen</label>
+                            <select id="pred-senior">
+                                <option value="0">No</option>
+                                <option value="1">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Partner</label>
+                            <select id="pred-partner">
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Dependents</label>
+                            <select id="pred-dependents">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tenure (Months)</label>
+                            <input type="number" id="pred-tenure" value="12">
+                        </div>
+                        <div class="form-group">
+                            <label>Phone Service</label>
+                            <select id="pred-phone">
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Internet Service</label>
+                            <select id="pred-internet">
+                                <option value="Fiber optic">Fiber optic</option>
+                                <option value="DSL">DSL</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Online Security</label>
+                            <select id="pred-security">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No internet service">No internet service</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Tech Support</label>
+                            <select id="pred-support">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No internet service">No internet service</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Paperless Billing</label>
+                            <select id="pred-paperless">
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Payment Method</label>
+                            <select id="pred-payment">
+                                <option value="Electronic check">Electronic check</option>
+                                <option value="Mailed check">Mailed check</option>
+                                <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                                <option value="Credit card (automatic)">Credit card (automatic)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Monthly Charges ($)</label>
+                            <input type="number" id="pred-monthly" value="70.00" step="0.01">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Charges ($)</label>
+                            <input type="number" id="pred-total" value="840.00" step="0.01">
+                        </div>
+                    </div>
+                    
+                    <button class="btn-gradient" style="width: 100%; justify-content: center; padding: 14px;" onclick="runCustomPrediction()">
+                        <i data-lucide="zap"></i>
+                        <span>Execute Model Inference</span>
+                    </button>
+                </div>
+
+                <!-- Predict Output Card -->
+                <div class="predict-result-card">
+                    <div id="result-placeholder" class="predict-placeholder">
+                        <i data-lucide="cpu" style="width: 60px; height: 60px;"></i>
+                        <div>
+                            <h3>Awaiting Inference Request</h3>
+                            <p style="font-size: 13px; margin-top: 6px; color: var(--text-secondary);">Load a customer record or fill the custom features to execute prediction</p>
+                        </div>
+                    </div>
+
+                    <div id="result-container" style="display: none; width: 100%;">
+                        <h3 style="margin-bottom: 24px; font-size: 20px;">Model Inference Result</h3>
+                        
+                        <div style="display: flex; justify-content: center; width: 100%;">
+                            <div class="radial-progress" id="probability-ring">
+                                <div class="radial-value" id="probability-value">0%</div>
+                            </div>
+                        </div>
+
+                        <div style="color: var(--text-secondary); font-size: 14px; margin-bottom: 8px;">Prediction Verdict:</div>
+                        <div class="prediction-badge" id="predict-verdict">NO CHURN</div>
+                        
+                        <div style="height: 1px; background-color: var(--border-color); margin: 24px 0;"></div>
+                        <div style="display: flex; justify-content: space-around; font-size: 13px; color: var(--text-secondary);">
+                            <div>Target ID: <strong id="res-target-id" style="color: white;">-</strong></div>
+                            <div>Model Version: <strong id="res-model-ver" style="color: white;">v0</strong></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD / EDIT CUSTOMER -->
+    <div class="modal" id="customer-modal">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal()">
+                <i data-lucide="x"></i>
+            </button>
+            <h2 id="modal-title" style="margin-bottom: 24px; font-size: 22px;">Add Customer Profile</h2>
+            
+            <form id="customer-form" onsubmit="saveCustomer(event)">
+                <input type="hidden" id="form-is-edit" value="false">
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Customer ID (Unique)</label>
+                        <input type="text" id="cust-id" required placeholder="e.g. 1234-ABCDE">
+                    </div>
+                    <div class="form-group">
+                        <label>Gender</label>
+                        <select id="cust-gender">
+                            <option value="Female">Female</option>
+                            <option value="Male">Male</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Senior Citizen</label>
+                        <select id="cust-senior">
+                            <option value="0">No</option>
+                            <option value="1">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Partner</label>
+                        <select id="cust-partner">
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Dependents</label>
+                        <select id="cust-dependents">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tenure (Months)</label>
+                        <input type="number" id="cust-tenure" required min="0" value="12">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone Service</label>
+                        <select id="cust-phone">
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Internet Service</label>
+                        <select id="cust-internet">
+                            <option value="DSL">DSL</option>
+                            <option value="Fiber optic">Fiber optic</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Online Security</label>
+                        <select id="cust-security">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Tech Support</label>
+                        <select id="cust-support">
+                            <option value="No">No</option>
+                            <option value="Yes">Yes</option>
+                            <option value="No internet service">No internet service</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Paperless Billing</label>
+                        <select id="cust-paperless">
+                            <option value="Yes">Yes</option>
+                            <option value="No">No</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Payment Method</label>
+                        <select id="cust-payment">
+                            <option value="Electronic check">Electronic check</option>
+                            <option value="Mailed check">Mailed check</option>
+                            <option value="Bank transfer (automatic)">Bank transfer (automatic)</option>
+                            <option value="Credit card (automatic)">Credit card (automatic)</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Monthly Charges ($)</label>
+                        <input type="number" id="cust-monthly" required min="0" step="0.01" value="50.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Total Charges ($)</label>
+                        <input type="number" id="cust-total" required min="0" step="0.01" value="600.00">
+                    </div>
+                    <div class="form-group">
+                        <label>Ground Truth Churn Label</label>
+                        <select id="cust-churn">
+                            <option value="">Unknown / Feedback Pending</option>
+                            <option value="0">Stays (0)</option>
+                            <option value="1">Churned (1)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 20px;">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn-gradient" id="btn-save-customer">Save Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        // Init Lucide Icons
+        lucide.createIcons();
+
+        // Local State
+        let currentPage = 0;
+        const limitPerPage = 10;
+        let allCustomers = [];
+
+        // App Initializer
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchActiveModel();
+            fetchModelHistory();
+            fetchCustomers();
+        });
+
+        // Navigation tab switching
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view-panel').forEach(view => view.classList.remove('active'));
+            // Deactivate all sidebar buttons
+            document.querySelectorAll('.nav-item').forEach(btn => btn.classList.remove('active'));
+
+            // Show active view
+            document.getElementById(`view-${viewName}`).classList.add('active');
+            
+            // Set header labels dynamically
+            const titleEl = document.getElementById('view-title');
+            const descEl = document.getElementById('view-desc');
+            const targetBtnIndex = {
+                'dashboard': 0,
+                'database': 1,
+                'predict': 2
+            }[viewName];
+            
+            document.querySelectorAll('.nav-item')[targetBtnIndex].classList.add('active');
+
+            if (viewName === 'dashboard') {
+                titleEl.innerText = "MLOps Performance Overview";
+                descEl.innerText = "Monitor model performance metrics, database seeds, and trigger retraining.";
+                fetchActiveModel();
+                fetchModelHistory();
+            } else if (viewName === 'database') {
+                titleEl.innerText = "Customer Database Records";
+                descEl.innerText = "Add, update, or remove database profiles and manage ground-truth feedback.";
+                fetchCustomers();
+            } else if (viewName === 'predict') {
+                titleEl.innerText = "Churn Inference Portal";
+                descEl.innerText = "Execute real-time model inference using custom features or active profiles.";
+            }
+        }
+
+        // Fetch active model metrics
+        async function fetchActiveModel() {
+            try {
+                const response = await fetch('/api/v1/models/active');
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('dash-version').innerText = `v${data.version}`;
+                    document.getElementById('dash-accuracy').innerText = `${(data.accuracy * 100).toFixed(1)}%`;
+                    document.getElementById('dash-f1').innerText = data.f1_score.toFixed(3);
+                    document.getElementById('dash-dataset').innerText = data.dataset_size;
+                }
+            } catch (err) {
+                console.error("Failed to load active model:", err);
+            }
+        }
+
+        // Fetch model versions history
+        async function fetchModelHistory() {
+            try {
+                const response = await fetch('/api/v1/models/history');
+                if (response.ok) {
+                    const data = await response.json();
+                    const tbody = document.getElementById('history-table-body');
+                    tbody.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: var(--text-secondary);">No history found</td></tr>';
+                        return;
+                    }
+
+                    data.forEach((model, index) => {
+                        const tr = document.createElement('tr');
+                        const statusBadge = model.is_active 
+                            ? `<span class="badge stay">Active</span>` 
+                            : `<span class="badge pending">Archived</span>`;
+                            
+                        tr.innerHTML = `
+                            <td><strong>v${model.version}</strong></td>
+                            <td>${(model.accuracy * 100).toFixed(1)}%</td>
+                            <td>${model.f1_score.toFixed(4)}</td>
+                            <td>P: ${model.precision.toFixed(3)} / R: ${model.recall.toFixed(3)}</td>
+                            <td>${model.dataset_size} samples</td>
+                            <td>${statusBadge}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to load model history:", err);
+            }
+        }
+
+        // Fetch customers list
+        async function fetchCustomers() {
+            try {
+                const skip = currentPage * limitPerPage;
+                const response = await fetch(`/api/v1/customers?skip=${skip}&limit=${limitPerPage}`);
+                if (response.ok) {
+                    allCustomers = await response.json();
+                    const tbody = document.getElementById('db-table-body');
+                    tbody.innerHTML = '';
+
+                    // Enable/disable pagination
+                    document.getElementById('btn-prev').disabled = currentPage === 0;
+                    document.getElementById('btn-next').disabled = allCustomers.length < limitPerPage;
+
+                    if (allCustomers.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: var(--text-secondary);">No customer records in database.</td></tr>';
+                        return;
+                    }
+
+                    allCustomers.forEach(cust => {
+                        const tr = document.createElement('tr');
+                        
+                        let churnBadge = `<span class="badge pending">Feedback Pending</span>`;
+                        if (cust.churn === 0) {
+                            churnBadge = `<span class="badge stay">No Churn (0)</span>`;
+                        } else if (cust.churn === 1) {
+                            churnBadge = `<span class="badge churn">Churned (1)</span>`;
+                        }
+
+                        tr.innerHTML = `
+                            <td><strong>${cust.customer_id}</strong></td>
+                            <td>${cust.tenure} months</td>
+                            <td>$${cust.monthly_charges.toFixed(2)} / $${cust.total_charges.toFixed(2)}</td>
+                            <td>${cust.internet_service}</td>
+                            <td>${cust.tech_support}</td>
+                            <td>${churnBadge}</td>
+                            <td>
+                                <button class="action-icon-btn" title="Edit Customer" onclick="openEditModal('${cust.customer_id}')">
+                                    <i data-lucide="edit-2" style="width: 14px; height: 14px;"></i>
+                                </button>
+                                <button class="action-icon-btn" title="Load in Inference Portal" onclick="loadCustomerInPredict('${cust.customer_id}')">
+                                    <i data-lucide="zap" style="width: 14px; height: 14px;"></i>
+                                </button>
+                                <button class="action-icon-btn delete" title="Delete Record" onclick="deleteCustomer('${cust.customer_id}')">
+                                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                                </button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    lucide.createIcons();
+                }
+            } catch (err) {
+                console.error("Failed to load customers:", err);
+            }
+        }
+
+        function changePage(direction) {
+            currentPage = Math.max(0, currentPage + direction);
+            fetchCustomers();
+        }
+
+        // Model Retraining handler
+        async function triggerRetrain() {
+            const btn = document.getElementById('btn-retrain');
+            btn.disabled = true;
+            btn.innerHTML = `<i data-lucide="refresh-cw" style="animation: spin 1s infinite linear;"></i><span>Training Model...</span>`;
+            lucide.createIcons();
+
+            try {
+                const response = await fetch('/api/v1/retrain', { method: 'POST' });
+                const resData = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Model Retrained!',
+                        text: `Successfully built and deployed Model version v${resData.metrics.version} with Accuracy ${ (resData.metrics.accuracy * 100).toFixed(1) }%`,
+                        icon: 'success',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                    fetchActiveModel();
+                    fetchModelHistory();
+                } else {
+                    Swal.fire({
+                        title: 'Retraining Error',
+                        text: resData.detail || 'Could not retrain. Check database labels.',
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            } catch (err) {
+                console.error("Retrain error:", err);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = `<i data-lucide="refresh-cw"></i><span>Retrain Model</span>`;
+                lucide.createIcons();
+            }
+        }
+
+        // Modal Helpers
+        function openAddModal() {
+            document.getElementById('modal-title').innerText = "Add Customer Profile";
+            document.getElementById('form-is-edit').value = "false";
+            document.getElementById('cust-id').disabled = false;
+            document.getElementById('customer-form').reset();
+            document.getElementById('customer-modal').classList.add('active');
+        }
+
+        function openEditModal(customerId) {
+            document.getElementById('modal-title').innerText = `Edit Customer Profile: ${customerId}`;
+            document.getElementById('form-is-edit').value = "true";
+            
+            // Fetch customer details to fill form
+            const cust = allCustomers.find(c => c.customer_id === customerId);
+            if (cust) {
+                document.getElementById('cust-id').value = cust.customer_id;
+                document.getElementById('cust-id').disabled = true;
+                
+                document.getElementById('cust-gender').value = cust.gender;
+                document.getElementById('cust-senior').value = cust.senior_citizen;
+                document.getElementById('cust-partner').value = cust.partner;
+                document.getElementById('cust-dependents').value = cust.dependents;
+                document.getElementById('cust-tenure').value = cust.tenure;
+                document.getElementById('cust-phone').value = cust.phone_service;
+                document.getElementById('cust-internet').value = cust.internet_service;
+                document.getElementById('cust-security').value = cust.online_security;
+                document.getElementById('cust-support').value = cust.tech_support;
+                document.getElementById('cust-paperless').value = cust.paperless_billing;
+                document.getElementById('cust-payment').value = cust.payment_method;
+                document.getElementById('cust-monthly').value = cust.monthly_charges;
+                document.getElementById('cust-total').value = cust.total_charges;
+                document.getElementById('cust-churn').value = cust.churn === null ? "" : cust.churn;
+                
+                document.getElementById('customer-modal').classList.add('active');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('customer-modal').classList.remove('active');
+        }
+
+        // Add or Update Customer Record
+        async function saveCustomer(e) {
+            e.preventDefault();
+            const isEdit = document.getElementById('form-is-edit').value === "true";
+            const customerId = document.getElementById('cust-id').value;
+            
+            const payload = {
+                customer_id: customerId,
+                gender: document.getElementById('cust-gender').value,
+                senior_citizen: parseInt(document.getElementById('cust-senior').value),
+                partner: document.getElementById('cust-partner').value,
+                dependents: document.getElementById('cust-dependents').value,
+                tenure: parseInt(document.getElementById('cust-tenure').value),
+                phone_service: document.getElementById('cust-phone').value,
+                internet_service: document.getElementById('cust-internet').value,
+                online_security: document.getElementById('cust-security').value,
+                tech_support: document.getElementById('cust-support').value,
+                paperless_billing: document.getElementById('cust-paperless').value,
+                payment_method: document.getElementById('cust-payment').value,
+                monthly_charges: parseFloat(document.getElementById('cust-monthly').value),
+                total_charges: parseFloat(document.getElementById('cust-total').value),
+                churn: document.getElementById('cust-churn').value === "" ? null : parseInt(document.getElementById('cust-churn').value)
+            };
+
+            let url = '/api/v1/customers';
+            let method = 'POST';
+
+            if (isEdit) {
+                url = `/api/v1/customers/${customerId}`;
+                method = 'PUT';
+            }
+
+            try {
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const resData = await response.json();
+
+                if (response.ok) {
+                    closeModal();
+                    Swal.fire({
+                        title: 'Success!',
+                        text: isEdit ? 'Customer profile updated.' : 'New customer profile registered.',
+                        icon: 'success',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                    fetchCustomers();
+                } else {
+                    Swal.fire({
+                        title: 'Transaction Error',
+                        text: resData.detail || 'Failed to save customer.',
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+            }
+        }
+
+        // Delete Customer Record
+        async function deleteCustomer(customerId) {
+            const confirm = await Swal.fire({
+                title: 'Delete Customer Record?',
+                text: "This will permanently remove the record from the database.",
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#111827',
+                color: '#f3f4f6',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#374151',
+                confirmButtonText: 'Yes, delete it'
+            });
+
+            if (confirm.isConfirmed) {
+                try {
+                    const response = await fetch(`/api/v1/customers/${customerId}`, { method: 'DELETE' });
+                    if (response.ok) {
+                        Swal.fire({
+                            title: 'Deleted!',
+                            text: 'Customer profile has been deleted.',
+                            icon: 'success',
+                            background: '#111827',
+                            color: '#f3f4f6',
+                            confirmButtonColor: '#3b82f6'
+                        });
+                        fetchCustomers();
+                    } else {
+                        const errData = await response.json();
+                        Swal.fire({
+                            title: 'Error',
+                            text: errData.detail || 'Could not delete customer.',
+                            icon: 'error',
+                            background: '#111827',
+                            color: '#f3f4f6'
+                        });
+                    }
+                } catch (err) {
+                    console.error("Delete error:", err);
+                }
+            }
+        }
+
+        // Load customer ID directly from Table to Prediction Interface
+        function loadCustomerInPredict(customerId) {
+            switchView('predict');
+            document.getElementById('predict-cust-id').value = customerId;
+            autofillPredictForm();
+        }
+
+        // Query customer by ID and load fields into UI inputs
+        async function autofillPredictForm() {
+            const customerId = document.getElementById('predict-cust-id').value;
+            if (!customerId) {
+                Swal.fire({
+                    title: 'Empty Search Field',
+                    text: 'Please input a valid Customer ID.',
+                    icon: 'info',
+                    background: '#111827',
+                    color: '#f3f4f6'
+                });
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/v1/customers/${customerId}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Populate predictor inputs
+                    document.getElementById('pred-gender').value = data.gender;
+                    document.getElementById('pred-senior').value = data.senior_citizen;
+                    document.getElementById('pred-partner').value = data.partner;
+                    document.getElementById('pred-dependents').value = data.dependents;
+                    document.getElementById('pred-tenure').value = data.tenure;
+                    document.getElementById('pred-phone').value = data.phone_service;
+                    document.getElementById('pred-internet').value = data.internet_service;
+                    document.getElementById('pred-security').value = data.online_security;
+                    document.getElementById('pred-support').value = data.tech_support;
+                    document.getElementById('pred-paperless').value = data.paperless_billing;
+                    document.getElementById('pred-payment').value = data.payment_method;
+                    document.getElementById('pred-monthly').value = data.monthly_charges;
+                    document.getElementById('pred-total').value = data.total_charges;
+                    
+                    // Directly run prediction
+                    runModelInference(customerId);
+                } else {
+                    Swal.fire({
+                        title: 'Not Found',
+                        text: `Customer '${customerId}' does not exist in the database.`,
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            } catch (err) {
+                console.error("Autofill error:", err);
+            }
+        }
+
+        // Run prediction for custom entered inputs
+        async function runCustomPrediction() {
+            // First we need a database record to predict. To avoid creating database bloat,
+            // we will upsert a temp customer "TEMP-INFERENCE-USER" in the DB, predict on them,
+            // and keep their profile available. This matches the API shape (predict maps to DB profile).
+            const tempId = "DEMO-USER";
+            
+            const payload = {
+                customer_id: tempId,
+                gender: document.getElementById('pred-gender').value,
+                senior_citizen: parseInt(document.getElementById('pred-senior').value),
+                partner: document.getElementById('pred-partner').value,
+                dependents: document.getElementById('pred-dependents').value,
+                tenure: parseInt(document.getElementById('pred-tenure').value),
+                phone_service: document.getElementById('pred-phone').value,
+                internet_service: document.getElementById('pred-internet').value,
+                online_security: document.getElementById('pred-security').value,
+                tech_support: document.getElementById('pred-support').value,
+                paperless_billing: document.getElementById('pred-paperless').value,
+                payment_method: document.getElementById('pred-payment').value,
+                monthly_charges: parseFloat(document.getElementById('pred-monthly').value),
+                total_charges: parseFloat(document.getElementById('pred-total').value)
+            };
+
+            try {
+                // Upsert to DB
+                // Check if they exist first, if yes PUT, if no POST
+                let checkResp = await fetch(`/api/v1/customers/${tempId}`);
+                let saveResp;
+                if (checkResp.ok) {
+                    saveResp = await fetch(`/api/v1/customers/${tempId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                } else {
+                    saveResp = await fetch('/api/v1/customers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                }
+
+                if (saveResp.ok) {
+                    runModelInference(tempId);
+                } else {
+                    const errData = await saveResp.json();
+                    Swal.fire({
+                        title: 'Inference Prep Error',
+                        text: errData.detail || 'Could not temporarily save features.',
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6'
+                    });
+                }
+            } catch (err) {
+                console.error("Custom predict error:", err);
+            }
+        }
+
+        // Calls inference API
+        async function runModelInference(customerId) {
+            try {
+                const response = await fetch('/api/v1/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ customer_id: customerId })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    // Update UI display
+                    document.getElementById('result-placeholder').style.display = 'none';
+                    document.getElementById('result-container').style.display = 'block';
+                    
+                    document.getElementById('res-target-id').innerText = data.customer_id;
+                    document.getElementById('res-model-ver').innerText = `v${data.model_version}`;
+                    
+                    const probPercent = Math.round(data.probability * 100);
+                    document.getElementById('probability-value').innerText = `${probPercent}%`;
+                    
+                    // Update conic gradient ring
+                    const ringColor = data.predicted_churn === 1 ? 'var(--accent-red)' : 'var(--accent-green)';
+                    document.getElementById('probability-ring').style.background = `conic-gradient(${ringColor} ${probPercent * 3.6}deg, rgba(255, 255, 255, 0.05) 0deg)`;
+                    
+                    const verdictEl = document.getElementById('predict-verdict');
+                    verdictEl.className = 'prediction-badge';
+                    if (data.predicted_churn === 1) {
+                        verdictEl.classList.add('churn');
+                        verdictEl.innerText = 'HIGH CHURN RISK (1)';
+                    } else {
+                        verdictEl.classList.add('no-churn');
+                        verdictEl.innerText = 'LOW CHURN RISK (0)';
+                    }
+                } else {
+                    Swal.fire({
+                        title: 'Inference Engine Error',
+                        text: data.detail || 'Prediction failed.',
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6'
+                    });
+                }
+            } catch (err) {
+                console.error("Inference query error:", err);
+            }
+        }
+
+        // Handle CSV file upload
+        async function handleCSVUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append("file", file);
+
+            // Show loading alert
+            Swal.fire({
+                title: 'Uploading Dataset...',
+                text: 'Reading CSV records and training model. Please wait...',
+                allowOutsideClick: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                },
+                background: '#111827',
+                color: '#f3f4f6'
+            });
+
+            try {
+                const response = await fetch('/api/v1/dataset/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    Swal.fire({
+                        title: 'Import Successful!',
+                        text: `${data.message} Active model version is now v${data.retrain_status.version} with ${(data.retrain_status.accuracy * 100).toFixed(1)}% accuracy.`,
+                        icon: 'success',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#3b82f6'
+                    });
+                    fetchActiveModel();
+                    fetchModelHistory();
+                    fetchCustomers();
+                } else {
+                    Swal.fire({
+                        title: 'Import Error',
+                        text: data.detail || 'Failed to process CSV file.',
+                        icon: 'error',
+                        background: '#111827',
+                        color: '#f3f4f6',
+                        confirmButtonColor: '#ef4444'
+                    });
+                }
+            } catch (err) {
+                console.error("CSV upload error:", err);
+                Swal.fire({
+                    title: 'System Error',
+                    text: 'An error occurred during upload.',
+                    icon: 'error',
+                    background: '#111827',
+                    color: '#f3f4f6'
+                });
+            } finally {
+                // Clear the input
+                document.getElementById('csv-file-input').value = '';
+            }
+        }
+
+        // Handle Database Reset
+        async function handleDatabaseReset() {
+            const confirm = await Swal.fire({
+                title: 'Are you sure?',
+                text: "This will wipe all current records, reset database to synthetic seed data, and train version 1 of the model.",
+                icon: 'warning',
+                showCancelButton: true,
+                background: '#111827',
+                color: '#f3f4f6',
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#374151',
+                confirmButtonText: 'Yes, reset everything'
+            });
+
+            if (confirm.isConfirmed) {
+                Swal.fire({
+                    title: 'Resetting...',
+                    text: 'Wiping database and retraining Model v1...',
+                    allowOutsideClick: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    },
+                    background: '#111827',
+                    color: '#f3f4f6'
+                });
+
+                try {
+                    const response = await fetch('/api/v1/dataset/reset', { method: 'POST' });
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        Swal.fire({
+                            title: 'Reset Completed!',
+                            text: data.message,
+                            icon: 'success',
+                            background: '#111827',
+                            color: '#f3f4f6',
+                            confirmButtonColor: '#3b82f6'
+                        });
+                        fetchActiveModel();
+                        fetchModelHistory();
+                        fetchCustomers();
+                    } else {
+                        Swal.fire({
+                            title: 'Reset Failed',
+                            text: data.detail || 'Could not reset database.',
+                            icon: 'error',
+                            background: '#111827',
+                            color: '#f3f4f6'
+                        });
+                    }
+                } catch (err) {
+                    console.error("Reset error:", err);
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</body>
+</html>
